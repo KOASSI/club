@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte des Clubs de Natation en Côte d'Ivoire</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+            cursor: crosshair !important;
+        }
+        .geoloc-btn {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .geoloc-btn:hover {
+            background: #f4f4f4;
+        }
+        .marker-icon {
+            transition: all 0.3s ease;
+        }
+        .marker-icon:hover {
+            transform: scale(1.2) rotate(15deg);
+        }
+    </style>
+</head>
+<body>
+    <h1>Carte des Clubs de Natation en Côte d'Ivoire</h1>
+    <button class="geoloc-btn">📍 Ma position</button>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        // Configuration de la carte
+        var map = L.map('map').setView([7.5399, -5.5471], 7);
+        var userMarker, routingControl;
+
+        // Couche OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Configuration des marqueurs
+        var customIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            className: 'marker-icon'
+        });
+
+        // Données des clubs
+        var clubs = [
+            { name: "Club AquaFit", location: [5.3599, -4.0083], description: "Club de natation à Abidjan" },
+            { name: "Swim Academy", location: [6.8506, -5.3103], description: "Académie à Yamoussoukro" },
+            { name: "Ocean Plongée", location: [4.9558, -6.0833], description: "Club à San-Pédro" },
+            { name: "Nageurs d'Ébène", location: [7.6900, -5.0300], description: "Club à Bouaké" }
+        ];
+
+        // Ajout des marqueurs avec animations
+        clubs.forEach(club => {
+            let marker = L.marker(club.location, { 
+                icon: customIcon,
+                riseOnHover: true
+            })
+            .on('mouseover', () => marker.openPopup())
+            .on('mouseout', () => marker.closePopup())
+            .bindPopup(`<b>${club.name}</b><br>${club.description}`)
+            .addTo(map);
+        });
+
+        // Géolocalisation
+        document.querySelector('.geoloc-btn').addEventListener('click', () => {
+            if(navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    let userPos = [position.coords.latitude, position.coords.longitude];
+                    
+                    // Supprimer l'ancien marqueur et itinéraire
+                    if(userMarker) map.removeLayer(userMarker);
+                    if(routingControl) map.removeControl(routingControl);
+
+                    // Nouveau marqueur utilisateur
+                    userMarker = L.marker(userPos, {
+                        icon: L.icon({
+                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41]
+                        }),
+                        zIndexOffset: 1000
+                    }).addTo(map);
+
+                    // Trouver le club le plus proche
+                    let closest = clubs.reduce((acc, club) => {
+                        let dist = map.distance(userPos, club.location);
+                        return dist < acc.dist ? {loc: club.location, dist} : acc;
+                    }, {dist: Infinity});
+
+                    // Calcul d'itinéraire
+                    routingControl = L.Routing.control({
+                        waypoints: [
+                            L.latLng(userPos),
+                            L.latLng(closest.loc)
+                        ],
+                        routeWhileDragging: true,
+                        lineOptions: { styles: [{color: '#3498db', opacity: 0.7, weight: 5}] },
+                        show: false
+                    }).addTo(map);
+                    
+                }, error => {
+                    alert('Erreur de géolocalisation : ' + error.message);
+                });
+            } else {
+                alert('Géolocalisation non supportée par votre navigateur');
+            }
+        });
+
+        // Animation au survol de la carte
+        map.on('mousemove', e => {
+            map.getContainer().style.cursor = 'crosshair';
+        });
+    </script>
+</body>
+</html>s
